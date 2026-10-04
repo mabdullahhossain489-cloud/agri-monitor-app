@@ -1,0 +1,266 @@
+import { useEffect, useMemo, useState } from 'react';
+
+const initialFields = [
+  {
+    id: 1,
+    name: 'North Plot',
+    crop: 'Tomatoes',
+    moisture: 42,
+    temp: 28,
+    humidity: 66,
+    nutrient: 72,
+    pH: 6.4,
+    status: 'Needs Water',
+    irrigation: 'Drip line active',
+    nextWater: '2h 10m'
+  },
+  {
+    id: 2,
+    name: 'West Orchard',
+    crop: 'Citrus',
+    moisture: 58,
+    temp: 26,
+    humidity: 70,
+    nutrient: 81,
+    pH: 6.7,
+    status: 'Healthy',
+    irrigation: 'Auto mode',
+    nextWater: '4h 35m'
+  },
+  {
+    id: 3,
+    name: 'South Field',
+    crop: 'Maize',
+    moisture: 31,
+    temp: 30,
+    humidity: 58,
+    nutrient: 64,
+    pH: 6.1,
+    status: 'Critical',
+    irrigation: 'Manual watering required',
+    nextWater: '0h 45m'
+  },
+  {
+    id: 4,
+    name: 'Greenhouse',
+    crop: 'Leafy Greens',
+    moisture: 65,
+    temp: 24,
+    humidity: 75,
+    nutrient: 86,
+    pH: 6.5,
+    status: 'Optimal',
+    irrigation: 'Humidity control on',
+    nextWater: '6h 00m'
+  }
+];
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+function App() {
+  const [fields, setFields] = useState(initialFields);
+  const [selectedFieldId, setSelectedFieldId] = useState(1);
+  const [autoIrrigation, setAutoIrrigation] = useState(true);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFields((currentFields) =>
+        currentFields.map((field) => {
+          const moistureShift = Math.random() * 8 - 4;
+          const tempShift = Math.random() * 2 - 1;
+          const humidityShift = Math.random() * 6 - 3;
+          const updatedMoisture = clamp(field.moisture + moistureShift, 18, 90);
+          const updatedTemp = clamp(field.temp + tempShift, 18, 40);
+          const updatedHumidity = clamp(field.humidity + humidityShift, 35, 90);
+
+          let status = 'Healthy';
+          if (updatedMoisture < 35) status = 'Critical';
+          else if (updatedMoisture < 50) status = 'Needs Water';
+
+          return {
+            ...field,
+            moisture: Number(updatedMoisture.toFixed(0)),
+            temp: Number(updatedTemp.toFixed(0)),
+            humidity: Number(updatedHumidity.toFixed(0)),
+            status
+          };
+        })
+      );
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const selectedField = useMemo(
+    () => fields.find((field) => field.id === selectedFieldId) ?? fields[0],
+    [fields, selectedFieldId]
+  );
+
+  const averageMoisture = Math.round(
+    fields.reduce((total, field) => total + field.moisture, 0) / fields.length
+  );
+  const dryZones = fields.filter((field) => field.moisture < 40).length;
+  const healthyZones = fields.filter((field) => field.status === 'Healthy').length;
+
+  const irrigationAdvice =
+    selectedField.moisture < 35
+      ? 'Water immediately to avoid crop stress. Check drip line pressure and soil absorption.'
+      : selectedField.moisture < 55
+        ? 'Moderate moisture detected. Schedule irrigation in 2 to 3 hours.'
+        : 'Soil moisture is in a good range. Maintain current watering schedule.';
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand-block">
+          <div className="logo">A</div>
+          <div>
+            <p className="eyebrow">Smart Farming</p>
+            <h1>AgriMonitor</h1>
+          </div>
+        </div>
+
+        <nav className="nav">
+          <button className="nav-item active">Dashboard</button>
+          <button className="nav-item">Fields</button>
+          <button className="nav-item">Sensors</button>
+          <button className="nav-item">Alerts</button>
+          <button className="nav-item">Reports</button>
+        </nav>
+
+        <div className="pump-card">
+          <div className="mini-header">
+            <span>Auto irrigation</span>
+            <button
+              className={`toggle ${autoIrrigation ? 'on' : ''}`}
+              onClick={() => setAutoIrrigation(!autoIrrigation)}
+              aria-label="Toggle automatic irrigation"
+            >
+              <span></span>
+            </button>
+          </div>
+          <p>{autoIrrigation ? 'System running normally' : 'Manual mode enabled'}</p>
+        </div>
+      </aside>
+
+      <main className="main-panel">
+        <header className="topbar">
+          <div>
+            <p className="eyebrow muted">Farm overview</p>
+            <h2>Field conditions</h2>
+          </div>
+          <div className="header-actions">
+            <button className="ghost-btn">Export</button>
+            <button className="primary-btn">Irrigation plan</button>
+          </div>
+        </header>
+
+        <section className="metrics-grid">
+          <div className="metric-card accent">
+            <span>Soil moisture</span>
+            <strong>{averageMoisture}%</strong>
+            <small>Average across all plots</small>
+          </div>
+          <div className="metric-card">
+            <span>Dry zones</span>
+            <strong>{dryZones}</strong>
+            <small>Fields needing water</small>
+          </div>
+          <div className="metric-card">
+            <span>Healthy crops</span>
+            <strong>{healthyZones}</strong>
+            <small>Active and balanced</small>
+          </div>
+          <div className="metric-card">
+            <span>Rain forecast</span>
+            <strong>18%</strong>
+            <small>Low chance today</small>
+          </div>
+        </section>
+
+        <section className="content-grid">
+          <div className="panel left-panel">
+            <div className="panel-header">
+              <h3>Your fields</h3>
+              <span className="status-pill live">Live</span>
+            </div>
+
+            <div className="field-list">
+              {fields.map((field) => (
+                <button
+                  key={field.id}
+                  className={`field-item ${selectedFieldId === field.id ? 'selected' : ''}`}
+                  onClick={() => setSelectedFieldId(field.id)}
+                >
+                  <div>
+                    <h4>{field.name}</h4>
+                    <p>{field.crop}</p>
+                  </div>
+                  <div className="field-meta">
+                    <span className={`status-badge ${field.status.toLowerCase().replace(/\s+/g, '-')}`}>
+                      {field.status}
+                    </span>
+                    <strong>{field.moisture}%</strong>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="panel detail-panel">
+            <div className="panel-header">
+              <h3>{selectedField.name}</h3>
+              <span className="status-pill neutral">{selectedField.crop}</span>
+            </div>
+
+            <div className="sensor-grid">
+              <div className="sensor-box moisture-box">
+                <span>Soil moisture</span>
+                <strong>{selectedField.moisture}%</strong>
+                <div className="bar-track">
+                  <div className="bar-fill moisture" style={{ width: `${selectedField.moisture}%` }} />
+                </div>
+              </div>
+
+              <div className="sensor-box">
+                <span>Temperature</span>
+                <strong>{selectedField.temp}°C</strong>
+              </div>
+
+              <div className="sensor-box">
+                <span>Humidity</span>
+                <strong>{selectedField.humidity}%</strong>
+              </div>
+
+              <div className="sensor-box">
+                <span>pH level</span>
+                <strong>{selectedField.pH}</strong>
+              </div>
+            </div>
+
+            <div className="recommendation-box">
+              <div>
+                <p className="eyebrow muted">Smart suggestion</p>
+                <h4>{selectedField.status}</h4>
+              </div>
+              <p>{irrigationAdvice}</p>
+            </div>
+
+            <div className="detail-footer">
+              <div>
+                <span>Next watering</span>
+                <strong>{selectedField.nextWater}</strong>
+              </div>
+              <div>
+                <span>Irrigation mode</span>
+                <strong>{selectedField.irrigation}</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+export default App;
